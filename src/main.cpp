@@ -25,6 +25,10 @@ struct Ball {
     float radius;
 };
 
+struct Vec2 {
+    float x, y;
+};
+
 constexpr const char* kVertexShaderSource = R"(#version 330 core
 layout (location = 0) in vec2 aPos;
 uniform vec2 uCenter;
@@ -143,6 +147,13 @@ void resolveWallCollision(Ball& ball) {
     }
 }
 
+bool checkBallCollision(const Ball&a, const Ball& b) {
+    float dx = b.posX - a.posX;
+    float dy = b.posY - a.posY;
+    float distance = sqrt(dx * dx + dy * dy);
+    return distance < (a.radius + b.radius);
+}
+
 } // namespace
 
 int main() {
@@ -171,6 +182,14 @@ int main() {
             for (Ball& ball : balls) {
                 updateBall(ball, deltaTime);
                 resolveWallCollision(ball);
+            }
+
+            for (size_t i = 0; i < balls.size(); ++i) {
+                for (size_t j = i + 1; j < balls.size(); ++j) {
+                    if (checkBallCollision(balls[i], balls[j])) {
+                        std::cout << "balls " << i << " and " << j << " are touching\n";
+                    }
+                }
             }
 
             glClear(GL_COLOR_BUFFER_BIT);
