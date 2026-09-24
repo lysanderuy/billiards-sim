@@ -124,6 +124,25 @@ void updateBall(Ball& ball, float deltaTime) {
     ball.posY += ball.velY * deltaTime;
 }
 
+void resolveWallCollision(Ball& ball) {
+    if (ball.posX - ball.radius < -1.0f) {
+        ball.posX = -1.0f + ball.radius;
+        ball.velX = -ball.velX;
+    }
+    if (ball.posX + ball.radius > 1.0f) {
+        ball.posX = 1.0f - ball.radius;
+        ball.velX = -ball.velX;
+    }
+    if (ball.posY - ball.radius < -1.0f) {
+        ball.posY = -1.0f + ball.radius;
+        ball.velY = -ball.velY;
+    }
+    if (ball.posY + ball.radius > 1.0f) {
+        ball.posY = 1.0f - ball.radius;
+        ball.velY = -ball.velY;
+    }
+}
+
 } // namespace
 
 int main() {
@@ -147,6 +166,7 @@ int main() {
             gfx::processInput(window);
 
             updateBall(ball, deltaTime);
+            resolveWallCollision(ball);
 
             glClear(GL_COLOR_BUFFER_BIT);
             drawBall(program, mesh, ball);
