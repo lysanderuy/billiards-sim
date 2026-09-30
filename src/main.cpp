@@ -159,7 +159,8 @@ int main() {
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
         std::vector<Ball> balls = {
-            {-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius, 0.75f},
+            {-0.5f, 0.6f, 0.6f, 0.4f, kBallRadius, 0.75f},
+            {0.5f, 0.6f, 0.0f, 0.0f, kBallRadius, 0.3f},
         };
 
         glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
