@@ -24,6 +24,7 @@ struct Ball {
     float posX, posY;
     float velX, velY;
     float radius;
+    float restitution;
 };
 
 constexpr const char* kVertexShaderSource = R"(#version 330 core
@@ -140,7 +141,7 @@ void resolveWallCollision(Ball& ball) {
     }
     if (ball.posY - ball.radius < -1.0f) {
         ball.posY = -1.0f + ball.radius;
-        ball.velY = -ball.velY;
+        ball.velY = -ball.velY * ball.restitution;
     }
     if (ball.posY + ball.radius > 1.0f) {
         ball.posY = 1.0f - ball.radius;
@@ -158,7 +159,7 @@ int main() {
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
         std::vector<Ball> balls = {
-            {-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius},
+            {-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius, 0.75f},
         };
 
         glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
