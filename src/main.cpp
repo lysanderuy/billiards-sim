@@ -18,6 +18,7 @@ namespace {
 constexpr float kBallRadius = 0.1f;
 constexpr int kCircleSegments = 40;
 constexpr float kPi = 3.14159265358979323846f;
+constexpr float kGravity = -1.8f;
 
 struct Ball {
     float posX, posY;
@@ -119,6 +120,10 @@ void drawBall(GLuint program, const CircleMesh& mesh, const Ball& ball) {
     glDrawArrays(GL_TRIANGLE_FAN, 0, mesh.vertexCount);
 }
 
+void applyGravity(Ball& ball, float deltaTime) {
+    ball.velY += kGravity * deltaTime;
+}
+
 void updateBall(Ball& ball, float deltaTime) {
     ball.posX += ball.velX * deltaTime;
     ball.posY += ball.velY * deltaTime;
@@ -168,6 +173,7 @@ int main() {
             gfx::processInput(window);
 
             for (Ball& ball : balls) {
+                applyGravity(ball, deltaTime);
                 updateBall(ball, deltaTime);
                 resolveWallCollision(ball);
             }
