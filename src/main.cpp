@@ -25,10 +25,6 @@ struct Ball {
     float radius;
 };
 
-struct Vec2 {
-    float x, y;
-};
-
 constexpr const char* kVertexShaderSource = R"(#version 330 core
 layout (location = 0) in vec2 aPos;
 uniform vec2 uCenter;
@@ -147,48 +143,6 @@ void resolveWallCollision(Ball& ball) {
     }
 }
 
-bool checkBallCollision(const Ball&a, const Ball& b) {
-    float dx = b.posX - a.posX;
-    float dy = b.posY - a.posY;
-    float distance = sqrt(dx * dx + dy * dy);
-    return distance < (a.radius + b.radius);
-}
-
-Vec2 computeCollisionNormal(const Ball& a, const Ball& b, float& outDistance) {
-    float dx = b.posX - a.posX;
-    float dy = b.posY - a.posY;
-    outDistance = sqrt(dx * dx + dy * dy);
-    return { dx / outDistance, dy / outDistance };
-}
- 
-void exchangeNormalVelocity(Ball& a, Ball& b, const Vec2& normal) {
-    float dotA = a.velX * normal.x + a.velY * normal.y;
-    float dotB = b.velX * normal.x + b.velY * normal.y;
-
-    a.velX += (dotB - dotA) * normal.x;
-    a.velY += (dotB - dotA) * normal.y;
-    b.velX += (dotA - dotB) * normal.x;
-    b.velY += (dotA - dotB) * normal.y;
-}
-
-void correctPenetration(Ball& a, Ball& b, const Vec2& normal, float distance) {
-    float overlap = (a.radius + b.radius) - distance;
-    float pushEach = overlap / 2.0f;
-
-    a.posX -= normal.x * pushEach;
-    a.posY -= normal.y * pushEach;
-    b.posX += normal.x * pushEach;
-    b.posY += normal.y * pushEach;
-}
-
-void resolveBallCollision(Ball& a, Ball& b) {
-    float distance;
-    Vec2 normal = computeCollisionNormal(a, b, distance);
-
-    exchangeNormalVelocity(a, b, normal);
-    correctPenetration(a, b, normal, distance);
-}
-
 } // namespace
 
 int main() {
@@ -200,7 +154,6 @@ int main() {
         CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
         std::vector<Ball> balls = {
             {-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius},
-            {0.4f, 0.2f, -0.5f, 0.3f, kBallRadius},
         };
 
         glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
@@ -217,14 +170,6 @@ int main() {
             for (Ball& ball : balls) {
                 updateBall(ball, deltaTime);
                 resolveWallCollision(ball);
-            }
-
-            for (size_t i = 0; i < balls.size(); ++i) {
-                for (size_t j = i + 1; j < balls.size(); ++j) {
-                    if (checkBallCollision(balls[i], balls[j])) {
-                        resolveBallCollision(balls[i], balls[j]);
-                    }
-                }
             }
 
             glClear(GL_COLOR_BUFFER_BIT);
