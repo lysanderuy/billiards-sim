@@ -20,11 +20,21 @@ constexpr float kPi = 3.14159265358979323846f;
 constexpr float kPointRadius = 0.03f;
 constexpr float kRestitution = 0.4f;
 constexpr float kGravity = -1.8f;
+constexpr float kStiffness = 400.0f;
 
 struct PointMass {
     float posX, posY;
     float velX, velY;
     float mass;
+};
+
+struct Spring {
+    int a, b;
+    float restLength;
+};
+
+struct Vec2 {
+    float x, y;
 };
 
 constexpr const char* kVertexShaderSource = R"(#version 330 core
@@ -34,7 +44,8 @@ void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
 
 constexpr const char* kFragmentShaderSource = R"(#version 330 core
 out vec4 FragColor;
-void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
+uniform vec4 uColor;
+void main() { FragColor = uColor; }
 )";
 
 GLuint compileShader(GLenum type, const char* source) {
@@ -109,6 +120,32 @@ void uploadDynamic(GLuint vbo, const std::vector<float>& data) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+float distance(const PointMass& a, const PointMass& b) {
+    float dx = b.posX - a.posX;
+    float dy = b.posY - a.posY;
+    return sqrtf(dx * dx + dy * dy);
+}
+
+void applySpringForce(std::vector<PointMass>& points, const Spring& spring, float deltaTime) {
+    PointMass& a = points[spring.a];
+    PointMass& b = points[spring.b];
+
+    float dist = distance(a, b);
+    if (dist < 1e-6f) return;
+
+    Vec2 dir = {(b.posX - a.posX) / dist, (b.posY - a.posY) / dist};
+    float stretch = dist - spring.restLength;
+    float forceMagnitude = kStiffness * stretch;
+
+    float forceX = dir.x * forceMagnitude;
+    float forceY = dir.y * forceMagnitude;
+
+    a.velX += forceX / a.mass * deltaTime;
+    a.velY += forceY / a.mass * deltaTime;
+    b.velX -= forceX / b.mass * deltaTime;
+    b.velY -= forceY / b.mass * deltaTime;
+}
+
 void applyGravity(PointMass& point, float deltaTime) {
     point.velY += kGravity * deltaTime;
 }
@@ -145,13 +182,21 @@ int main() {
         gfx::Window window({.width = 600, .height = 600, .title = "Billiards Sim"});
 
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
+        GLint colorLoc = glGetUniformLocation(program, "uColor");
         std::vector<float> circleVerts = generateCircleVertices(kPointRadius, kCircleSegments);
         GLuint circleVbo = 0;
         GLuint circleVao = createDynamicVao(circleVbo);
         GLsizei circleVertexCount = static_cast<GLsizei>(circleVerts.size() / 2);
+        GLuint lineVbo = 0;
+        GLuint lineVao = createDynamicVao(lineVbo);
 
         std::vector<PointMass> points = {
-            {0.0f, 0.6f, 0.0f, 0.0f, 1.0f},
+            {-0.2f, 0.6f, 0.0f, 0.0f, 1.0f},
+            {0.2f, 0.6f, 0.0f, 0.0f, 1.0f},
+        };
+
+        std::vector<Spring> springs = {
+            {0, 1, 0.25f},
         };
 
         glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
@@ -165,6 +210,10 @@ int main() {
 
             gfx::processInput(window);
 
+            for (const Spring& spring : springs) {
+                applySpringForce(points, spring, deltaTime);
+            }
+
             for (PointMass& point : points) {
                 applyGravity(point, deltaTime);
                 updatePoint(point, deltaTime);
@@ -173,6 +222,20 @@ int main() {
 
             glClear(GL_COLOR_BUFFER_BIT);
             glUseProgram(program);
+
+            std::vector<float> lineVerts;
+            for (const Spring& spring : springs) {
+                lineVerts.push_back(points[spring.a].posX);
+                lineVerts.push_back(points[spring.a].posY);
+                lineVerts.push_back(points[spring.b].posX);
+                lineVerts.push_back(points[spring.b].posY);
+            }
+            uploadDynamic(lineVbo, lineVerts);
+            glUniform4f(colorLoc, 0.31f, 0.76f, 0.97f, 1.0f);
+            glBindVertexArray(lineVao);
+            glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVerts.size() / 2));
+
+            glUniform4f(colorLoc, 0.85f, 0.85f, 0.9f, 1.0f);
             glBindVertexArray(circleVao);
             for (const PointMass& point : points) {
                 std::vector<float> translated = circleVerts;
@@ -190,6 +253,8 @@ int main() {
 
         glDeleteVertexArrays(1, &circleVao);
         glDeleteBuffers(1, &circleVbo);
+        glDeleteVertexArrays(1, &lineVao);
+        glDeleteBuffers(1, &lineVbo);
         glDeleteProgram(program);
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
