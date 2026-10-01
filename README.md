@@ -1,8 +1,9 @@
 # Billiards Sim
 
-A 2D billiards simulation in C++ and OpenGL, built one stage at a time. Balls
-move, bounce off the walls, and collide with each other. The physics is written
-by hand: no physics library.
+A small 2D physics engine in C++ and OpenGL, built one stage at a time.
+Billiards was the first toy; a bouncing ball with gravity and restitution, and a
+mass-spring soft body, followed the same way. The physics is written by hand: no
+physics library.
 
 The project started from an OpenGL boilerplate (GLFW and GLAD vendored, window
 and input handling in `src/core/`). Each commit after the boilerplate adds one
@@ -20,7 +21,8 @@ stage of the simulation, so the git history doubles as a learning history.
 2. Open `.vscode/tasks.json` and edit the `"command"` field to point at your
    own `g++.exe` (e.g. `C:/msys64/mingw64/bin/g++.exe`).
 3. Run the `Build Main` task, then run `main.exe`.
-4. Two balls bounce around a green window. `Esc` closes it.
+4. A soft square drops into a green window, lands, squashes, and settles.
+   `Esc` closes it.
 5. Optionally run the `Build Triangle Example` task and `triangle.exe` to
    see an orange triangle.
 
@@ -31,7 +33,8 @@ The project builds as C++20 (`-std=c++20`).
 The window is square (600x600) and the play area is the full screen, from -1 to
 1 on both axes. The square window keeps the balls circular.
 
-Every frame, `src/main.cpp` does the following:
+This is the billiards version, as of the `stage-7` tag (`git checkout stage-7`
+to see it). Every frame, `src/main.cpp` does the following:
 
 1. Measures `deltaTime`, the time since the previous frame.
 2. For each ball, moves it by `velocity * deltaTime` (`updateBall`) and keeps
@@ -50,6 +53,23 @@ Resolving a ball-ball collision takes three steps, in order:
 3. `correctPenetration`: pushes the balls apart along the same direction so
    they stop overlapping.
 
+## Toy 1: Bouncing Ball
+
+Billiards had no gravity, so this toy adds it. `applyGravity` adds a constant
+downward acceleration to each ball's vertical velocity every frame. Each ball
+also carries its own `restitution`, a 0 to 1 value for how much of its speed
+survives a floor bounce. Two balls dropped from the same height with different
+restitution behave differently: one keeps bouncing, the other settles quickly.
+
+## Toy 2: Mass-Spring Square
+
+Four point masses joined by springs make a soft body. Each spring pulls or
+pushes its two points toward a rest length in proportion to how far it's
+stretched (Hooke's Law), and a damping term opposes how fast the length is
+changing, so the motion settles. The four edge springs alone let the square
+fold flat. Two diagonal springs resist that and hold its shape. The points and
+springs are redrawn from fresh vertex data every frame.
+
 ## Stages
 
 Each stage is one commit, tagged so you can jump to it:
@@ -63,6 +83,15 @@ Each stage is one commit, tagged so you can jump to it:
 | 5 | `stage-5` | Two balls, each bouncing independently, passing through each other |
 | 6 | `stage-6` | `checkBallCollision`: detects contact and prints it |
 | 7 | `stage-7` | Ball-ball collision response: the balls bounce off each other |
+| 8 | `stage-8` | Removes ball-vs-ball collision to isolate gravity work |
+| 9 | `stage-9` | `applyGravity`: gravity accumulates into vertical velocity every frame |
+| 10 | `stage-10` | Restitution: floor bounces lose energy, so the ball settles |
+| 11 | `stage-11` | Per-ball restitution: two balls, two different behaviors |
+| 12 | `stage-12` | `PointMass`, gravity and floor collision, drawn through dynamic buffers |
+| 13 | `stage-13` | `Spring`: Hooke's Law pulls two point masses toward a rest length |
+| 14 | `stage-14` | Damping: the spring loses energy and settles |
+| 15 | `stage-15` | Four point masses and four edge springs: a square that folds flat |
+| 16 | `stage-16` | Two diagonal springs: the square keeps its shape |
 
 To see the code as it was at a stage, run `git checkout stage-4` (or any tag),
 then `git checkout main` to come back.
