@@ -193,12 +193,17 @@ int main() {
         GLuint lineVao = createDynamicVao(lineVbo);
 
         std::vector<PointMass> points = {
-            {-0.2f, 0.6f, 0.0f, 0.0f, 1.0f},
-            {0.2f, 0.6f, 0.0f, 0.0f, 1.0f},
+            {-0.2621f, 0.7063f, 0.0f, 0.0f, 1.0f},
+            {0.1063f, 0.8621f, 0.0f, 0.0f, 1.0f},
+            {0.2621f, 0.4937f, 0.0f, 0.0f, 1.0f},
+            {-0.1063f, 0.3379f, 0.0f, 0.0f, 1.0f},
         };
 
         std::vector<Spring> springs = {
-            {0, 1, 0.25f},
+            {0, 1, distance(points[0], points[1])},
+            {1, 2, distance(points[1], points[2])},
+            {2, 3, distance(points[2], points[3])},
+            {3, 0, distance(points[3], points[0])},
         };
 
         glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
