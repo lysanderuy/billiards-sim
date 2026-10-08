@@ -1,9 +1,9 @@
 # Billiards Sim
 
 A small 2D physics engine in C++ and OpenGL, built one stage at a time.
-Billiards was the first toy; a bouncing ball with gravity and restitution, and a
-mass-spring soft body, followed the same way. The physics is written by hand: no
-physics library.
+Billiards was the first toy; a bouncing ball with gravity and restitution, a
+mass-spring soft body, and a Verlet ragdoll followed the same way. The physics
+is written by hand: no physics library.
 
 The project started from an OpenGL boilerplate (GLFW and GLAD vendored, window
 and input handling in `src/core/`). Each commit after the boilerplate adds one
@@ -21,8 +21,9 @@ stage of the simulation, so the git history doubles as a learning history.
 2. Open `.vscode/tasks.json` and edit the `"command"` field to point at your
    own `g++.exe` (e.g. `C:/msys64/mingw64/bin/g++.exe`).
 3. Run the `Build Main` task, then run `main.exe`.
-4. A soft square drops into a green window, lands, squashes, and settles.
-   `Esc` closes it.
+4. A ragdoll named Woody drops into a green window and collapses on the floor.
+   Hold the left mouse button to pick up and drag any part of him. `Esc` closes
+   it.
 5. Optionally run the `Build Triangle Example` task and `triangle.exe` to
    see an orange triangle.
 
@@ -70,6 +71,27 @@ changing, so the motion settles. The four edge springs alone let the square
 fold flat. Two diagonal springs resist that and hold its shape. The points and
 springs are redrawn from fresh vertex data every frame.
 
+## Toy 3: Ragdoll Woodie
+
+Woody is a stick figure made of 11 points joined by 10 sticks. A point stores no
+velocity. It keeps its current position and its previous position, and the
+difference between them is the velocity (Verlet integration). Each frame moves
+every point by that difference plus gravity, using a fixed time step (`kDt`,
+1/60 of a second). The step runs once per frame, so the simulation assumes a
+60 Hz display.
+
+A stick keeps two points at a fixed distance, its rest length. When the points
+are too far apart or too close, `applyStick` moves both of them toward the right
+distance. Fixing one stick disturbs its neighbors, so the sticks are applied
+several times per frame (`kIterations`) until the body settles. A pinned point
+is never moved, so a chain of sticks can hang from it.
+
+The floor is a position clamp: a point below it is moved back up. There is no
+bounce, since velocity is implied by the positions. Holding the left mouse
+button picks up the nearest point and drags it. Setting its previous position
+equal to its current one removes the speed it had, so it follows the cursor
+cleanly.
+
 ## Stages
 
 Each stage is one commit, tagged so you can jump to it:
@@ -92,6 +114,13 @@ Each stage is one commit, tagged so you can jump to it:
 | 14 | `stage-14` | Damping: the spring loses energy and settles |
 | 15 | `stage-15` | Four point masses and four edge springs: a square that folds flat |
 | 16 | `stage-16` | Two diagonal springs: the square keeps its shape |
+| 17 | `stage-17` | Verlet integration: a point falls with no stored velocity |
+| 18 | `stage-18` | `Stick`: two points keep a fixed distance |
+| 19 | `stage-19` | Pinned points: a chain hangs from a fixed point |
+| 20 | `stage-20` | Relaxation: several passes per frame keep the sticks rigid |
+| 21 | `stage-21` | The ragdoll: eleven points and ten sticks, hanging by the head |
+| 22 | `stage-22` | Floor clamp: the ragdoll falls and collapses |
+| 23 | `stage-23` | Mouse dragging: pick up and throw the ragdoll |
 
 To see the code as it was at a stage, run `git checkout stage-4` (or any tag),
 then `git checkout main` to come back.
