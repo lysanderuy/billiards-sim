@@ -20,6 +20,7 @@ constexpr float kPi = 3.14159265358979323846f;
 constexpr float kPointRadius = 0.03f;
 constexpr float kGravity = -1.8f;
 constexpr float kDt = 1.0f / 60.0f;
+constexpr int kIterations = 5;
 
 struct Point {
     float posX, posY, prevX, prevY;
@@ -196,8 +197,10 @@ int main() {
                 updatePoint(point, kDt);
             }
 
-            for (const Stick& stick : sticks) {
-                applyStick(points, stick);
+            for (int i = 0; i < kIterations; ++i) {
+                for (const Stick& stick : sticks) {
+                    applyStick(points, stick);
+                }
             }
 
             glClear(GL_COLOR_BUFFER_BIT);
