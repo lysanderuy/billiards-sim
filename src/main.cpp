@@ -21,6 +21,7 @@ constexpr float kPointRadius = 0.03f;
 constexpr float kGravity = -1.8f;
 constexpr float kDt = 1.0f / 60.0f;
 constexpr int kIterations = 5;
+constexpr float kWindowSize = 600.0f;
 
 struct Point {
     float posX, posY, prevX, prevY;
@@ -158,6 +159,21 @@ void resolveFloor(Point& point) {
         point.posY = -1.0f + kPointRadius;
 }
 
+Point* nearestPoint(std::vector<Point>& points, float x, float y) {
+    Point* nearest = nullptr;
+    float bestDist2 = 0.0f;
+    for (Point& point : points) {
+        float dx = point.posX - x;
+        float dy = point.posY - y;
+        float dist2 = dx * dx + dy * dy;
+        if (!nearest || dist2 < bestDist2) {
+            nearest = &point;
+            bestDist2 = dist2;
+        }
+    }
+    return nearest;
+}
+
 } // namespace
 
 int main() {
@@ -194,6 +210,8 @@ int main() {
             {2, 9, distance(points[2], points[9])}, {9, 10, distance(points[9], points[10])},
         };
 
+        Point* dragged = nullptr;
+
         glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
 
         while (!window.shouldClose()) {
@@ -201,6 +219,19 @@ int main() {
 
             for (Point& point : points) {
                 updatePoint(point, kDt);
+            }
+
+            double mx, my;
+            window.getCursorPosition(mx, my);
+            float x = static_cast<float>(mx / kWindowSize) * 2.0f - 1.0f;
+            float y = 1.0f - static_cast<float>(my / kWindowSize) * 2.0f;
+
+            bool down = window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT);
+            if (down && !dragged) dragged = nearestPoint(points, x, y);
+            if (!down) dragged = nullptr;
+            if (dragged) {
+                dragged->posX = x;  dragged->posY = y;
+                dragged->prevX = x; dragged->prevY = y;
             }
 
             for (int i = 0; i < kIterations; ++i) {
