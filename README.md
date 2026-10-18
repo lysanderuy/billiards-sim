@@ -1,100 +1,101 @@
 # Billiards Sim
 
-A small 2D physics engine in C++ and OpenGL, built one stage at a time.
-Billiards was the first toy; a bouncing ball with gravity and restitution, a
-mass-spring soft body, and a Verlet ragdoll followed the same way. The physics
-is written by hand: no physics library.
+A 2D billiards game in C++ and OpenGL. The physics is written by hand, with no
+physics library. The earlier experiments (bouncing balls, a spring-based soft
+body, a Verlet ragdoll) are kept as standalone programs in `src/examples/`.
 
-The project started from an OpenGL boilerplate (GLFW and GLAD vendored, window
-and input handling in `src/core/`). Each commit after the boilerplate adds one
-stage of the simulation, so the git history doubles as a learning history.
+GLFW and GLAD are vendored, and window and input handling live in `src/core/`.
+Each commit after the boilerplate adds one stage, so the git history shows how
+the project was built.
 
 ## Prerequisites
 
 - **MinGW-w64 via MSYS2**. Install from [msys2.org](https://www.msys2.org/),
-  then install the `mingw-w64-x86_64-gcc` toolchain (or equivalent) from
-  within the MSYS2 shell.
+  then install the `mingw-w64-x86_64-gcc` toolchain from the MSYS2 shell.
 
 ## Setup
 
 1. Clone this repo.
-2. Open `.vscode/tasks.json` and edit the `"command"` field to point at your
-   own `g++.exe` (e.g. `C:/msys64/mingw64/bin/g++.exe`).
+2. Open `.vscode/tasks.json` and set the `"command"` field of both tasks to your
+   `g++.exe` (e.g. `C:/msys64/mingw64/bin/g++.exe`).
 3. Run the `Build Main` task, then run `main.exe`.
-4. A ragdoll named Woody drops into a green window and collapses on the floor.
-   Hold the left mouse button to pick up and drag any part of him. `Esc` closes
-   it.
-5. Optionally run the `Build Triangle Example` task and `triangle.exe` to
-   see an orange triangle.
+4. To build an example, run the `Build Example` task and pick a name. It
+   produces `<name>.exe` in the repo root.
 
-The project builds as C++20 (`-std=c++20`).
+The project builds as C++20.
 
-## How the simulation works
+## Controls
 
-The window is square (600x600) and the play area is the full screen, from -1 to
-1 on both axes. The square window keeps the balls circular.
+- **Aim:** move the mouse. The stick points at the cursor.
+- **Shoot:** hold the left mouse button, drag back to pull the stick, release to
+  hit. A longer pull is a harder shot.
+- `Esc` closes the window.
 
-This is the billiards version, as of the `stage-7` tag (`git checkout stage-7`
-to see it). Every frame, `src/main.cpp` does the following:
+The stick appears only when all balls have stopped. Balls that fall into a
+pocket are removed. If the cue ball is pocketed, it returns to the head spot once
+the table is still.
 
-1. Measures `deltaTime`, the time since the previous frame.
-2. For each ball, moves it by `velocity * deltaTime` (`updateBall`) and keeps
-   it inside the walls (`resolveWallCollision`).
-3. Checks every pair of balls once (`checkBallCollision`). Touching pairs are
-   resolved (`resolveBallCollision`).
-4. Draws every ball.
+## How it works
 
-Resolving a ball-ball collision takes three steps, in order:
+All sizes are in meters. The window is sized to fit the table and its rail.
 
-1. `computeCollisionNormal`: the unit direction from one ball's center to the
-   other's.
-2. `exchangeNormalVelocity`: the two balls swap their velocity along that
-   direction. Their sideways motion is unchanged. This is the equal-mass,
-   perfectly elastic case.
-3. `correctPenetration`: pushes the balls apart along the same direction so
-   they stop overlapping.
+The simulation runs at a fixed 480 Hz, driven by a time accumulator. Each step
+(`stepBalls`):
 
-## Toy 1: Bouncing Ball
+1. Moves each ball by `velocity * dt`.
+2. Slows it with a constant rolling deceleration (`applyFriction`). Below
+   `kStopSpeed` the ball stops.
+3. Resolves the cushions (`resolveCushions`). Each cushion is a segment, and its
+   ends are the jaw tips at the pockets. A ball bounces off a segment or a tip
+   with `kCushionRestitution`. A ball whose center enters a pocket circle is
+   removed.
+4. Resolves ball-ball collisions (`resolveBallCollision`). Touching, approaching
+   balls exchange velocity along the line between their centers, scaled by
+   `kBallRestitution`, and are pushed apart.
 
-Billiards had no gravity, so this toy adds it. `applyGravity` adds a constant
-downward acceleration to each ball's vertical velocity every frame. Each ball
-also carries its own `restitution`, a 0 to 1 value for how much of its speed
-survives a floor bounce. Two balls dropped from the same height with different
-restitution behave differently: one keeps bouncing, the other settles quickly.
+The stick is handled in `updateCue`. While balls move, input is ignored. At rest,
+the aim follows the mouse. Holding the left button and dragging back sets the
+pull, up to `kMaxPull`. On release, the cue ball gets a speed of
+`pull / kMaxPull * kMaxShotSpeed` along the aim direction.
 
-## Toy 2: Mass-Spring Square
+Everything is drawn each frame from 2D vertex lists through one dynamic buffer,
+back to front: rail, cloth, cushions, pockets, diamonds, balls, stick.
 
-Four point masses joined by springs make a soft body. Each spring pulls or
-pushes its two points toward a rest length in proportion to how far it's
-stretched (Hooke's Law), and a damping term opposes how fast the length is
-changing, so the motion settles. The four edge springs alone let the square
-fold flat. Two diagonal springs resist that and hold its shape. The points and
-springs are redrawn from fresh vertex data every frame.
+The values to tune are the constants at the top of `src/main.cpp`:
+`kRollingResistance`, `kCushionRestitution`, `kBallRestitution`,
+`kMaxShotSpeed`, `kMaxPull`, `kBallScale` and `kPocketRadius`.
 
-## Toy 3: Ragdoll Woodie
+## Examples
 
-Woody is a stick figure made of 11 points joined by 10 sticks. A point stores no
-velocity. It keeps its current position and its previous position, and the
-difference between them is the velocity (Verlet integration). Each frame moves
-every point by that difference plus gravity, using a fixed time step (`kDt`,
-1/60 of a second). The step runs once per frame, so the simulation assumes a
-60 Hz display.
+Each example is a standalone program in `src/examples/<name>/main.cpp`, taken
+from the stage where it was finished.
 
-A stick keeps two points at a fixed distance, its rest length. When the points
-are too far apart or too close, `applyStick` moves both of them toward the right
-distance. Fixing one stick disturbs its neighbors, so the sticks are applied
-several times per frame (`kIterations`) until the body settles. A pinned point
-is never moved, so a chain of sticks can hang from it.
+| Example | What it shows | From |
+|---|---|---|
+| `triangle` | An orange triangle on top of `core/` | boilerplate |
+| `ball_collisions` | Two balls bouncing off the walls and each other | `stage-7` |
+| `bouncing_ball` | Gravity and per-ball restitution | `stage-11` |
+| `mass_spring_square` | Four points and six damped springs forming a soft square | `stage-16` |
+| `ragdoll` | A Verlet stick figure you can drag with the mouse | `stage-23` |
 
-The floor is a position clamp: a point below it is moved back up. There is no
-bounce, since velocity is implied by the positions. Holding the left mouse
-button picks up the nearest point and drags it. Setting its previous position
-equal to its current one removes the speed it had, so it follows the cursor
-cleanly.
+**Bouncing ball.** Gravity adds a downward acceleration to each ball every
+frame. Each ball has its own `restitution`, the fraction of speed kept after a
+floor bounce, so two balls dropped together settle differently.
+
+**Mass-spring square.** Each spring pulls its two points toward a rest length in
+proportion to its stretch, and a damping term slows the motion. The four edge
+springs let the square fold flat, and the two diagonal springs hold its shape.
+
+**Ragdoll.** The figure is 11 points joined by 10 sticks. A point stores its
+current and previous position, and their difference is its velocity (Verlet
+integration). A stick moves its two points back to a fixed distance, and the
+sticks are applied `kIterations` times per frame so the body stays rigid. A
+pinned point never moves. The floor is a position clamp. Holding the left mouse
+button drags the nearest point.
 
 ## Stages
 
-Each stage is one commit, tagged so you can jump to it:
+Stages 1 to 23 are tagged. The billiards game is the latest commits on `main`.
 
 | Stage | Tag | What it adds |
 |---|---|---|
@@ -121,35 +122,38 @@ Each stage is one commit, tagged so you can jump to it:
 | 21 | `stage-21` | The ragdoll: eleven points and ten sticks, hanging by the head |
 | 22 | `stage-22` | Floor clamp: the ragdoll falls and collapses |
 | 23 | `stage-23` | Mouse dragging: pick up and throw the ragdoll |
+| 24 | *(on `main`, untagged)* | Examples moved to `src/examples/`; `main.cpp` becomes the billiards game |
 
-To see the code as it was at a stage, run `git checkout stage-4` (or any tag),
-then `git checkout main` to come back.
+To see the code at a stage, run `git checkout stage-4` (or any tag), then
+`git checkout main` to come back.
 
 ## Project structure
 
 ```
 src/
-  main.cpp                the simulation
+  main.cpp                the billiards game
   glad.c                  vendored GLAD loader
   core/
     glfw_context.h/.cpp   gfx::GlfwContext, initializes and terminates GLFW
     window.h/.cpp         gfx::Window, creates the window and loads GLAD
     input.h/.cpp          gfx::processInput, keyboard handling
   examples/
-    triangle.cpp          triangle rendered on top of core/
+    triangle/             triangle rendered on top of core/
+    ball_collisions/      two balls, walls and ball-ball collisions
+    bouncing_ball/        gravity and restitution
+    mass_spring_square/   soft body made of springs
+    ragdoll/              Verlet stick figure
 ```
 
 Everything in `core/` lives in the `gfx` namespace and uses RAII: an object
-sets up its resource in its constructor and releases it in its destructor, so
-cleanup happens on every exit path. Startup failures throw
-`std::runtime_error`, which `main` catches and prints.
+acquires its resource in its constructor and releases it in its destructor.
+Startup failures throw `std::runtime_error`, which `main` catches and prints.
 
 ## Vendored dependencies
 
 `include/glad`, `include/GLFW`, `include/KHR`, `lib/libglfw3dll.a`, and the
-root `glfw3.dll` are already included in this repo. You shouldn't need to
-reinstall anything, but here's where they came from in case a dependency
-ever needs to be regenerated or replaced:
+root `glfw3.dll` are included in this repo. If you need to regenerate or replace
+them:
 
 - **GLAD**, generated at [glad.dav1d.de](https://glad.dav1d.de/) with:
   - Language: `C/C++`
@@ -157,31 +161,24 @@ ever needs to be regenerated or replaced:
   - Profile: `Core`
   - All other APIs: `None`
   - "Omit KHR": unchecked
-- **GLFW**, downloaded from the
-  [GLFW downloads page](https://www.glfw.org/download.html). Use the Windows
-  precompiled binaries, and pull the files from the `lib-mingw-w64` folder
-  specifically.
+- **GLFW**, from the [GLFW downloads page](https://www.glfw.org/download.html).
+  Use the Windows precompiled binaries and take the files from the
+  `lib-mingw-w64` folder.
 
 ## PATH requirement
 
-Besides pointing `tasks.json` at your `g++.exe`, you also need to add your
-compiler's `bin` folder (e.g. `C:\msys64\mingw64\bin`) to your system `PATH`
-environment variable.
+Besides pointing `tasks.json` at your `g++.exe`, add your compiler's `bin` folder
+(e.g. `C:\msys64\mingw64\bin`) to your system `PATH`.
 
-This is separate from the `tasks.json` compiler path. The `tasks.json`
-`"command"` only tells VS Code/Cursor which executable to launch directly.
-It doesn't help the processes that compiler spawns internally (such as
-`cc1plus.exe`) find their own DLL dependencies. Those child processes
-resolve their DLLs through the system PATH, so without this step the build
-can fail even though `tasks.json` looks correctly configured.
+The `tasks.json` `"command"` only tells VS Code/Cursor which executable to
+launch. The compiler's own child processes (such as `cc1plus.exe`) find their
+DLLs through the system `PATH`, so without this entry the build can fail even
+when `tasks.json` is correct.
 
 ## Troubleshooting
 
-- **Build fails silently, with no error text at all.** This is almost
-  always the missing PATH entry above. Add the compiler's `bin` folder to
-  your system PATH and try again.
-- **Program compiles but won't run, or fails to launch immediately.**
-  `libglfw3dll.a` is an import library: it satisfies the linker, but the
-  actual GLFW code lives in `glfw3.dll` at runtime. That DLL has to sit next
-  to the built `.exe` (it already does, in the repo root), or the program
-  won't start even though it compiled fine.
+- **Build fails silently, with no error text.** Usually the missing `PATH` entry
+  above.
+- **Program compiles but won't run.** `libglfw3dll.a` only satisfies the linker.
+  The GLFW code lives in `glfw3.dll`, which must sit next to the built `.exe`
+  (it does, in the repo root).
