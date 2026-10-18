@@ -4,7 +4,9 @@ A 2D billiards game in C++ and OpenGL. The physics is written by hand, with no
 physics library. The earlier experiments (bouncing balls, a spring-based soft
 body, a Verlet ragdoll) are kept as standalone programs in `src/examples/`.
 
-![Billiards Sim](https://raw.githubusercontent.com/lysanderuy/billiards-sim/42e84f97d5a3762305ad6935e148e0259d6ab932/image.png)
+<div align=center>
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/1fe8c8e0-18cd-4c5b-8464-b8ca5fd8b253" />
+</div>
 
 GLFW and GLAD are vendored, and window and input handling live in `src/core/`.
 Each commit after the boilerplate adds one stage, so the git history shows how
